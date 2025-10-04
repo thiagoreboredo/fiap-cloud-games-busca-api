@@ -1,41 +1,69 @@
+using Elasticsearch.Net;
+using Nest;
+using System.ComponentModel.DataAnnotations;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// --- Configuração do Cliente Elasticsearch (NEST) ---
+var settings = new ConnectionSettings(new Uri(builder.Configuration["Elasticsearch:Uri"]))
+    .ApiKeyAuthentication(new ApiKeyAuthenticationCredentials(builder.Configuration["Elasticsearch:ApiKey"]))
+    .DefaultIndex("jogos-index"); // Nome do índice que vamos usar para os jogos
+
+var client = new ElasticClient(settings);
+builder.Services.AddSingleton<IElasticClient>(client);
+// --- Fim da Configuração ---
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
+// --- Endpoint de Busca ---
+app.MapGet("/busca", async ([Required] string termo, IElasticClient esClient) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    // A busca "MultiMatch" procura o termo em vários campos ao mesmo tempo.
+    var searchResponse = await esClient.SearchAsync<JogoDocument>(s => s
+        .Query(q => q
+            .MultiMatch(m => m
+                .Query(termo)
+                .Fields(f => f
+                    .Field(p => p.Name, boost: 3) // Damos um "boost" (peso maior) para o nome
+                    .Field(p => p.Company)
+                )
+                .Fuzziness(Fuzziness.Auto) // Permite pequenas correções de digitação (fuzzy search)
+            )
+        )
+    );
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
+    if (!searchResponse.IsValid)
+    {
+        // Se houver um erro na consulta, o retornamos para depuração
+        return Results.Problem(searchResponse.DebugInformation);
+    }
+
+    return Results.Ok(searchResponse.Documents);
 })
-.WithName("GetWeatherForecast");
+.WithTags("Busca")
+.WithSummary("Realiza uma busca por jogos no catálogo indexado.")
+.WithOpenApi();
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+// --- Classe que representa o documento no Elasticsearch ---
+public class JogoDocument
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Company { get; set; }
+    public double Price { get; set; }
+    public string Genre { get; set; } // Usar string aqui simplifica a busca
+    public string Rating { get; set; }
 }
