@@ -1,27 +1,19 @@
-using Busca.API.Helper;
-using Busca.API.Middleware;
-using Elasticsearch.Net;
-using Nest;
+using Elastic.Clients.Elasticsearch;
+using Elastic.Transport;
 using System.ComponentModel.DataAnnotations;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- Configuração do Cliente Elasticsearch (NEST) ---
-var settings = new ConnectionSettings(new Uri(builder.Configuration["Elasticsearch:Uri"]))
-    .ApiKeyAuthentication(new ApiKeyAuthenticationCredentials(builder.Configuration["Elasticsearch:ApiKey"]))
-    .DefaultIndex("jogos-index"); // Nome do índice que vamos usar para os jogos
+// --- INÍCIO: Configuração do Novo Cliente Elasticsearch ---
+var settings = new ElasticsearchClientSettings(new Uri(builder.Configuration["Elasticsearch:Uri"]))
+    .Authentication(new ApiKey(builder.Configuration["Elasticsearch:ApiKey"]));
 
-var client = new ElasticClient(settings);
-builder.Services.AddSingleton<IElasticClient>(client);
-// --- Fim da Configuração ---
+var client = new ElasticsearchClient(settings);
+builder.Services.AddSingleton(client); // Registra o cliente diretamente
+// --- FIM da Configuração ---
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-// --- Adicionar Injeção de Dependência para Logging ---
-builder.Services.AddTransient<ICorrelationIdGenerator, CorrelationIdGenerator>();
-builder.Services.AddTransient(typeof(IAppLogger<>), typeof(AppLogger<>));
-// --- Fim da Injeção ---
 
 var app = builder.Build();
 
@@ -31,36 +23,28 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// --- Configurar Middlewares ---
-app.UseCorrelationMiddleware();
-app.UseGlobalErrorHandlingMiddleware();
-// --- Fim da Configuração ---
-
 app.UseHttpsRedirection();
 
-// --- Endpoint de Busca ---
-app.MapGet("/busca", async ([Required] string termo, IElasticClient esClient) =>
+// --- Endpoint de Busca (Atualizado para a nova sintaxe) ---
+app.MapGet("/busca", async ([Required] string termo, ElasticsearchClient esClient) =>
 {
-    // A busca "MultiMatch" procura o termo em vários campos ao mesmo tempo.
     var searchResponse = await esClient.SearchAsync<JogoDocument>(s => s
+        .Index("jogos-index") // Especifica o índice na busca
         .Query(q => q
             .MultiMatch(m => m
                 .Query(termo)
-                .Fields(f => f
-                    .Field(p => p.Name, boost: 3) // Damos um "boost" (peso maior) para o nome
-                    .Field(p => p.Company)
-                )
-                .Fuzziness(Fuzziness.Auto) // Permite pequenas correções de digitação (fuzzy search)
+                .Fields("name^3,company") // "name^3" dá um boost (peso 3x maior) para o campo nome
+                .Fuzziness("AUTO")
             )
         )
     );
 
-    if (!searchResponse.IsValid)
+    if (!searchResponse.IsSuccess())
     {
-        // Se houver um erro na consulta, o retornamos para depuração
         return Results.Problem(searchResponse.DebugInformation);
     }
 
+    // Acessamos os documentos através da propriedade .Documents
     return Results.Ok(searchResponse.Documents);
 })
 .WithTags("Busca")
@@ -69,13 +53,13 @@ app.MapGet("/busca", async ([Required] string termo, IElasticClient esClient) =>
 
 app.Run();
 
-// --- Classe que representa o documento no Elasticsearch ---
+// A classe do documento permanece a mesma
 public class JogoDocument
 {
     public int Id { get; set; }
     public string Name { get; set; }
     public string Company { get; set; }
     public double Price { get; set; }
-    public string Genre { get; set; } // Usar string aqui simplifica a busca
+    public string Genre { get; set; }
     public string Rating { get; set; }
 }
