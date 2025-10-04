@@ -1,0 +1,6 @@
+@Busca.API_HostAddress = http://localhost:5122
+
+GET {{Busca.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
