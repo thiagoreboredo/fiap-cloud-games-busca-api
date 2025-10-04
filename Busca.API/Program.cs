@@ -1,3 +1,5 @@
+using Busca.API.Helper;
+using Busca.API.Middleware;
 using Elasticsearch.Net;
 using Nest;
 using System.ComponentModel.DataAnnotations;
@@ -16,6 +18,11 @@ builder.Services.AddSingleton<IElasticClient>(client);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// --- Adicionar Injeção de Dependência para Logging ---
+builder.Services.AddTransient<ICorrelationIdGenerator, CorrelationIdGenerator>();
+builder.Services.AddTransient(typeof(IAppLogger<>), typeof(AppLogger<>));
+// --- Fim da Injeção ---
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -23,6 +30,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// --- Configurar Middlewares ---
+app.UseCorrelationMiddleware();
+app.UseGlobalErrorHandlingMiddleware();
+// --- Fim da Configuração ---
 
 app.UseHttpsRedirection();
 
