@@ -49,6 +49,8 @@ app.MapGet("/busca", async ([Required] string termo, ElasticsearchClient esClien
 .WithSummary("Realiza uma busca por jogos no catálogo indexado.")
 .WithOpenApi();
 
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+
 app.Run();
 
 // A classe do documento permanece a mesma
