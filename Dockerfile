@@ -3,11 +3,11 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copia o arquivo de solução (.sln) e o arquivo de projeto (.csproj)
-COPY ["Busca.API.sln", "."]
+COPY ["Busca.sln", "."]
 COPY ["Busca.API/Busca.API.csproj", "Busca.API/"]
 
 # Restaura as dependências
-RUN dotnet restore "Busca.API.sln"
+RUN dotnet restore "Busca.sln"
 
 # Copia todo o resto do código fonte
 COPY . .
