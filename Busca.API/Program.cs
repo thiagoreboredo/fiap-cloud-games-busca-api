@@ -23,8 +23,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
 // --- Endpoint de Busca (Atualizado para a nova sintaxe) ---
 app.MapGet("/busca", async ([Required] string termo, ElasticsearchClient esClient) =>
 {
