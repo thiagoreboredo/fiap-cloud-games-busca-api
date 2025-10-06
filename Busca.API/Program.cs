@@ -49,7 +49,7 @@ app.MapGet("/busca", async ([Required] string termo, ElasticsearchClient esClien
 .WithSummary("Realiza uma busca por jogos no catálogo indexado.")
 .WithOpenApi();
 
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+app.MapGet("/health", () => new { status = "healthy", timestamp = DateTime.UtcNow }).ExcludeFromDescription();
 
 app.Run();
 
