@@ -1,22 +1,58 @@
 # Microsserviço de Busca - FIAP Cloud Games 🚀
 
-Este é o **Microsserviço de Busca** do projeto FIAP Cloud Games. Sua única responsabilidade é fornecer uma API de busca rápida e eficiente para o catálogo de jogos, utilizando o poder do Elasticsearch.
+Este microsserviço faz parte da plataforma FIAP Cloud Games, sendo responsável exclusivamente pela consulta de alta performance no catálogo de jogos indexados no Elasticsearch.
 
-Este serviço não possui banco de dados próprio; ele consome dados indexados no Elasticsearch, que são enviados por outros serviços (como o `catalogo-api`) de forma assíncrona.
+Na Fase 4, este serviço foi evoluído para suportar orquestração via Kubernetes (AKS), com foco em escalabilidade horizontal e monitoramento avançado.
 
----
+🚀 Evoluções da Fase 4
+Docker Otimizado: Migração para a imagem base aspnet:8.0-bookworm-slim, reduzindo o tamanho da imagem e a superfície de ataque.
 
-### 🎯 Responsabilidades do Serviço
+Segurança: Configuração de usuário não-root (USER $APP_UID) dentro do container para seguir as melhores práticas de segurança de contêineres.
 
--   **Endpoint de Busca**: Expõe um endpoint (`/busca`) que permite aos clientes pesquisar jogos por termos de texto.
--   **Consulta Avançada**: Utiliza consultas `MultiMatch` e `Fuzzy Search` do Elasticsearch para fornecer resultados relevantes, mesmo com pequenos erros de digitação.
--   **Performance**: Projetado para ser leve e rápido, delegando a complexidade da busca para o Elasticsearch.
+Orquestração: Preparado para execução em cluster Kubernetes (AKS) com suporte a HPA (Horizontal Pod Autoscaler).
 
----
+Observabilidade: Implementação de APM através do New Relic para monitoramento de performance e saúde do serviço em tempo real.
 
-### 🛠️ Tecnologias Utilizadas
+🛠 Tecnologias Utilizadas
+.NET 8 (C#)
 
--   **.NET 8 (Minimal API)**
--   **Elasticsearch**: Como motor de busca principal.
--   **NEST**: Biblioteca .NET para integração com o Elasticsearch.
--   **Docker**: Para conteinerização da aplicação.
+Minimal APIs
+
+Elasticsearch (Elastic Cloud)
+
+Docker (Multi-stage builds)
+
+New Relic (APM)
+
+Kubernetes (Orquestração)
+
+🐳 Docker (Padrão Fase 4)
+A imagem foi construída utilizando multi-stage build para garantir que o artefato final contenha apenas o necessário para a execução.
+
+Bash
+
+# Para buildar localmente:
+docker build -t fiap-cloud-games-busca-api .
+
+# Para rodar (necessário configurar variáveis do Elastic):
+docker run -p 8080:8080 \
+  -e ElasticsearchUri="SEU_URI" \
+  -e ElasticsearchApiKey="SUA_CHAVE" \
+  fiap-cloud-games-busca-api
+📈 Observabilidade e Performance
+Este microsserviço está instrumentado com o New Relic Dotnet Agent. Ele coleta automaticamente:
+
+Tempo de resposta das requisições.
+
+Latência nas consultas ao Elasticsearch.
+
+Consumo de CPU e Memória dentro do cluster Kubernetes.
+
+Rastreamento de erros (Exception Tracking).
+
+⚓ Kubernetes e Escalabilidade
+Este serviço possui manifestos para deploy no Azure Kubernetes Service (AKS), configurado com:
+
+Liveness e Readiness Probes: Para garantir que o cluster saiba quando o serviço está saudável.
+
+HPA: Configurado para escalar automaticamente o número de réplicas com base no consumo de CPU, garantindo disponibilidade durante picos de acesso.
